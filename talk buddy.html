@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TalkBuddy AI - Speech & Language Practice</title>
+    <!-- Tailwind CSS for modern responsive styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Canvas Confetti for rewards -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Inter:wght@400;600;700&display=swap');
+        
+        .font-kids {
+            font-family: 'Fredoka', cursive, sans-serif;
+        }
+        .font-app {
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Pulse Animation for Mic */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 18px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        .mic-active {
+            animation: pulse-ring 1.5s infinite;
+        }
+        
+        /* Floating Bounce Animation */
+        @keyframes gentle-bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .bounce-gentle {
+            animation: gentle-bounce 3s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 font-app text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header / Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-5xl mx-auto px-4 py-3 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center text-white text-xl font-bold shadow-md">
+                    <i class="fa-solid fa-microphone-lines"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-xl leading-tight text-slate-800">TalkBuddy<span class="text-indigo-600">.ai</span></h1>
+                    <p class="text-xs text-slate-500">Patient Speech Companion</p>
+                </div>
+            </div>
+
+            <!-- Mode Switcher Tabs -->
+            <div class="bg-slate-100 p-1 rounded-xl flex gap-1 border border-slate-200">
+                <button id="tabKids" onclick="switchMode('kids')" class="px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-sm">
+                    <i class="fa-solid fa-child-reaching"></i> Kids Mode
+                </button>
+                <button id="tabAdults" onclick="switchMode('adults')" class="px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 text-slate-600 hover:text-indigo-600">
+                    <i class="fa-solid fa-globe"></i> Adult Practice
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col justify-center">
+
+        <!-- Browser Compatibility Alert -->
+        <div id="browserWarning" class="hidden bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-2xl mb-6 text-sm flex items-center gap-3">
+            <i class="fa-solid fa-triangle-exclamation text-amber-500 text-lg"></i>
+            <div>
+                <strong>Notice:</strong> Speech recognition is best supported in Chrome, Edge, or Safari browsers on desktop or Android devices.
+            </div>
+        </div>
+
+        <!-- =================================================================== -->
+        <!-- KIDS MODE SECTION -->
+        <!-- =================================================================== -->
+        <section id="kidsSection" class="block space-y-6">
+            <!-- Mode Header Controls -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <label class="text-sm font-semibold text-slate-600">Category:</label>
+                    <select id="kidsCategorySelect" onchange="changeKidsCategory()" class="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 font-semibold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="words">💬 First Words (Mama, Papa...)</option>
+                        <option value="letters">🔤 Alphabet (A - Z)</option>
+                    </select>
+                </div>
+                
+                <!-- Progress & Stats -->
+                <div class="flex items-center gap-4 text-sm font-medium">
+                    <span id="kidsProgressText" class="text-slate-500">Item 1 of 10</span>
+                    <div class="w-32 bg-slate-200 rounded-full h-3 overflow-hidden">
+                        <div id="kidsProgressBar" class="bg-emerald-500 h-full w-0 transition-all duration-300"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Kids Practice Card -->
+            <div class="bg-white rounded-3xl p-6 sm:p-10 shadow-lg border-2 border-indigo-100 text-center relative overflow-hidden">
+                <!-- Attempt Counter Badge -->
+                <div class="absolute top-4 right-4 bg-amber-50 border border-amber-200 px-3 py-1 rounded-full text-xs font-bold text-amber-700 flex items-center gap-1">
+                    <i class="fa-solid fa-heart text-amber-500"></i>
+                    <span id="attemptTracker">Attempt: 1 / 2</span>
+                </div>
+
+                <!-- Card Content Display -->
+                <div class="my-6">
+                    <span id="kidsEmojiDisplay" class="text-6xl sm:text-7xl block mb-3 bounce-gentle">👶</span>
+                    <h2 id="kidsTargetText" class="text-5xl sm:text-7xl font-bold font-kids text-indigo-600 tracking-wide">
+                        Mama
+                    </h2>
+                    <p id="kidsHintText" class="text-slate-400 font-medium mt-2">Tap the speaker to hear, then press mic to talk!</p>
+                </div>
+
+                <!-- Interaction Control Buttons -->
+                <div class="flex flex-wrap justify-center items-center gap-4 sm:gap-6 my-8">
+                    <!-- Listen Button -->
+                    <button onclick="speakTargetWord()" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-indigo-100 hover:bg-indigo-200 text-indigo-600 flex flex-col items-center justify-center transition-all shadow-md hover:scale-105 active:scale-95">
+                        <i class="fa-solid fa-volume-high text-2xl sm:text-3xl"></i>
+                        <span class="text-[10px] font-bold mt-1">Listen</span>
+                    </button>
+
+                    <!-- Main Record Mic Button -->
+                    <button id="kidsMicBtn" onclick="toggleKidsSpeech()" class="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex flex-col items-center justify-center transition-all shadow-xl hover:scale-105 active:scale-95">
+                        <i id="kidsMicIcon" class="fa-solid fa-microphone text-3xl sm:text-4xl"></i>
+                        <span id="kidsMicStatus" class="text-xs font-bold mt-1">Tap & Say</span>
+                    </button>
+
+                    <!-- Skip / Next Button -->
+                    <button onclick="nextKidsItem(true)" class="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex flex-col items-center justify-center transition-all shadow-md hover:scale-105 active:scale-95">
+                        <i class="fa-solid fa-arrow-right text-2xl sm:text-3xl"></i>
+                        <span class="text-[10px] font-bold mt-1">Next</span>
+                    </button>
+                </div>
+
+                <!-- Live Feedback Display Box -->
+                <div id="kidsFeedbackBox" class="min-h-[60px] p-4 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center transition-all">
+                    <p id="kidsFeedbackText" class="text-slate-600 font-medium text-lg">
+                        Ready! Click the red microphone and say <span class="font-bold text-indigo-600" id="feedbackWordPlaceholder">"Mama"</span>!
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- =================================================================== -->
+        <!-- ADULT MODE SECTION -->
+        <!-- =================================================================== -->
+        <section id="adultsSection" class="hidden space-y-6">
+            <!-- Language & Category Toolbar -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 flex flex-wrap justify-between items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <label class="text-sm font-semibold text-slate-600">Target Language:</label>
+                    <select id="adultLanguageSelect" onchange="changeAdultLanguage()" class="bg-slate-50 border border-slate-300 rounded-xl px-4 py-2 font-semibold text-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="es-ES">🇪🇸 Spanish</option>
+                        <option value="fr-FR">🇫🇷 French</option>
+                        <option value="de-DE">🇩🇪 German</option>
+                        <option value="en-US">🇺🇸 English</option>
+                    </select>
+                </div>
+
+                <div class="text-sm font-medium text-slate-500">
+                    <span id="adultProgressText">Phrase 1 of 5</span>
+                </div>
+            </div>
+
+            <!-- Adult Practice Card -->
+            <div class="bg-white rounded-3xl p-6 sm:p-8 shadow-md border border-slate-200 text-center">
+                <div class="my-4">
+                    <span class="text-xs uppercase font-bold tracking-widest text-indigo-500 block mb-1">Target Phrase</span>
+                    <h3 id="adultTargetText" class="text-3xl sm:text-4xl font-bold text-slate-800">
+                        Hola, ¿cómo estás?
+                    </h3>
+                    <p id="adultTranslationText" class="text-slate-500 italic mt-2 text-lg">
+                        (Hello, how are you?)
+                    </p>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex justify-center items-center gap-4 my-6">
+                    <button onclick="speakAdultPhrase()" class="px-5 py-3 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-bold flex items-center gap-2 transition-all">
+                        <i class="fa-solid fa-volume-high"></i> Listen Native
+                    </button>
+
+                    <button id="adultMicBtn" onclick="toggleAdultSpeech()" class="px-6 py-3 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold flex items-center gap-2 transition-all shadow-md">
+                        <i id="adultMicIcon" class="fa-solid fa-microphone"></i>
+                        <span id="adultMicStatus">Start Speaking</span>
+                    </button>
+
+                    <button onclick="nextAdultItem()" class="px-5 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center gap-2 transition-all">
+                        Next <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </div>
+
+                <!-- Real-time Similarity Score Card -->
+                <div id="adultFeedbackBox" class="mt-6 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs font-bold text-slate-500 uppercase">You Said:</span>
+                        <span id="adultMatchScore" class="text-xs font-bold px-2 py-1 rounded bg-slate-200 text-slate-700">Match: 0%</span>
+                    </div>
+                    <p id="adultHeardText" class="text-lg font-semibold text-slate-700 italic">"..."</p>
+                    <p id="adultFeedbackMessage" class="text-sm text-slate-500">Press the microphone button and read the phrase aloud.</p>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Data Sets
+        const kidsData = {
+            words: [
+                { text: "Mama", emoji: "👩" },
+                { text: "Papa", emoji: "👨" },
+                { text: "Water", emoji: "💧" },
+                { text: "Milk", emoji: "🥛" },
+                { text: "Ball", emoji: "⚽" },
+                { text: "Cat", emoji: "🐱" },
+                { text: "Dog", emoji: "🐶" },
+                { text: "Star", emoji: "⭐" },
+                { text: "Sun", emoji: "☀️" },
+                { text: "Baby", emoji: "👶" }
+            ],
+            letters: "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(l => ({ text: l, emoji: "🔤" }))
+        };
+
+        const adultData = {
+            "es-ES": [
+                { text: "Hola, ¿cómo estás?", translation: "Hello, how are you?" },
+                { text: "Muchas gracias", translation: "Thank you very much" },
+                { text: "Buenos días", translation: "Good morning" },
+                { text: "¿Dónde está el baño?", translation: "Where is the bathroom?" },
+                { text: "Un gusto conocerte", translation: "Nice to meet you" }
+            ],
+            "fr-FR": [
+                { text: "Bonjour, comment ça va?", translation: "Hello, how are you?" },
+                { text: "Merci beaucoup", translation: "Thank you very much" },
+                { text: "S'il vous plaît", translation: "Please" },
+                { text: "Où sont les toilettes?", translation: "Where is the bathroom?" }
+            ],
+            "de-DE": [
+                { text: "Hallo, wie geht es dir?", translation: "Hello, how are you?" },
+                { text: "Vielen Dank", translation: "Thank you very much" },
+                { text: "Guten Morgen", translation: "Good morning" }
+            ],
+            "en-US": [
+                { text: "Hello, how are you doing today?", translation: "Standard greeting" },
+                { text: "Thank you for your help", translation: "Expressing gratitude" },
+                { text: "Where is the nearest station?", translation: "Asking directions" }
+            ]
+        };
+
+        // Application State
+        let currentMode = 'kids';
+        let kidsCategory = 'words';
+        let kidsIndex = 0;
+        let attemptCount = 0; // Tracks 2-try logic
+        
+        let adultLanguage = 'es-ES';
+        let adultIndex = 0;
+
+        let recognition = null;
+        let isListening = false;
+
+        window.onload = function() {
+            // Check browser speech recognition support
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                document.getElementById('browserWarning').classList.remove('hidden');
+            } else {
+                setupRecognition(SpeechRecognition);
+            }
+
+            renderKidsItem();
+            renderAdultItem();
+        };
+
+        function setupRecognition(SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                isListening = true;
+                updateMicUI(true);
+            };
+
+            recognition.onend = function() {
+                isListening = false;
+                updateMicUI(false);
+            };
+
+            recognition.onresult = function(event) {
+                const spokenTranscript = event.results[0][0].transcript.trim();
+                if (currentMode === 'kids') {
+                    handleKidsResult(spokenTranscript);
+                } else {
+                    handleAdultResult(spokenTranscript);
+                }
+            };
+
+            recognition.onerror = function(event) {
+                isListening = false;
+                updateMicUI(false);
+                if (currentMode === 'kids') {
+                    showFeedback("I couldn't quite hear you. Let's try again!", "amber");
+                }
+            };
+        }
+
+        function switchMode(mode) {
+            currentMode = mode;
+            if (isListening && recognition) recognition.stop();
+
+            const tabKids = document.getElementById('tabKids');
+            const tabAdults = document.getElementById('tabAdults');
+            const sectionKids = document.getElementById('kidsSection');
+            const sectionAdults = document.getElementById('adultsSection');
+
+            if (mode === 'kids') {
+                tabKids.className = "px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-sm";
+                tabAdults.className = "px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 text-slate-600 hover:text-indigo-600";
+                sectionKids.classList.remove('hidden');
+                sectionAdults.classList.add('hidden');
+            } else {
+                tabAdults.className = "px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 bg-indigo-600 text-white shadow-sm";
+                tabKids.className = "px-5 py-2 rounded-lg font-bold text-sm transition-all flex items-center gap-2 text-slate-600 hover:text-indigo-600";
+                sectionAdults.classList.remove('hidden');
+                sectionKids.classList.add('hidden');
+            }
+        }
+
+        function renderKidsItem() {
+            attemptCount = 0;
+            const items = kidsData[kidsCategory];
+            const currentItem = items[kidsIndex];
+
+            document.getElementById('kidsEmojiDisplay').innerText = currentItem.emoji;
+            document.getElementById('kidsTargetText').innerText = currentItem.text;
+            document.getElementById('feedbackWordPlaceholder').innerText = `"${currentItem.text}"`;
+            document.getElementById('attemptTracker').innerText = `Attempt: ${attemptCount + 1} / 2`;
+            
+            // Progress Bar Update
+            document.getElementById('kidsProgressText').innerText = `Item ${kidsIndex + 1} of ${items.length}`;
+            const pct = ((kidsIndex + 1) / items.length) * 100;
+            document.getElementById('kidsProgressBar').style.width = `${pct}%`;
+
+            showFeedback(`Ready! Tap the mic and say <strong>"${currentItem.text}"</strong>!`, "slate");
+        }
+
+        function changeKidsCategory() {
+            kidsCategory = document.getElementById('kidsCategorySelect').value;
+            kidsIndex = 0;
+            renderKidsItem();
+        }
+
+        function speakTargetWord() {
+            const currentItem = kidsData[kidsCategory][kidsIndex];
+            speakText(currentItem.text, 'en-US');
+        }
+
+        function toggleKidsSpeech() {
+            if (!recognition) {
+                alert("Speech recognition is not supported on this browser.");
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.lang = 'en-US';
+                recognition.start();
+            }
+        }
+
+        function handleKidsResult(spokenText) {
+            const target = kidsData[kidsCategory][kidsIndex].text.toLowerCase();
+            const cleanSpoken = spokenText.toLowerCase();
+
+            // Simple match or containment check
+            const isMatch = cleanSpoken.includes(target) || target.includes(cleanSpoken);
+
+            if (isMatch) {
+                // SUCCESS
+                triggerCelebration();
+                showFeedback(`🌟 <strong>Awesome job!</strong> You said "${spokenText}" perfectly!`, "emerald");
+                speakText("Awesome job!", 'en-US');
+                
+                setTimeout(() => {
+                    nextKidsItem(false);
+                }, 2200);
+            } else {
+                // FAILURE / MISPRONUNCIATION
+                attemptCount++;
+                document.getElementById('attemptTracker').innerText = `Attempt: ${Math.min(attemptCount + 1, 2)} / 2`;
+
+                if (attemptCount === 1) {
+                    // Attempt 1 Failure - Gentle encouragement & audio prompt
+                    showFeedback(`😊 Almost! I heard "${spokenText}". Let's try one more time together: <strong>"${kidsData[kidsCategory][kidsIndex].text}"</strong>`, "amber");
+                    speakText(`Almost! Let's try again: ${kidsData[kidsCategory][kidsIndex].text}`, 'en-US');
+                } else {
+                    // Attempt 2 Failure - Patient auto-advance without frustration
+                    showFeedback(`💙 Great effort! Practice makes perfect. Let's move to the next one!`, "indigo");
+                    speakText(`Great try! Let's move to the next one!`, 'en-US');
+                    
+                    setTimeout(() => {
+                        nextKidsItem(false);
+                    }, 2500);
+                }
+            }
+        }
+
+        function nextKidsItem(manualSkip = false) {
+            const items = kidsData[kidsCategory];
+            if (kidsIndex < items.length - 1) {
+                kidsIndex++;
+            } else {
+                kidsIndex = 0; // Loop back
+            }
+            renderKidsItem();
+            if (!manualSkip) speakTargetWord();
+        }
+
+        function showFeedback(msg, color) {
+            const box = document.getElementById('kidsFeedbackBox');
+            const txt = document.getElementById('kidsFeedbackText');
+
+            txt.innerHTML = msg;
+            if (color === "emerald") {
+                box.className = "min-h-[60px] p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 transition-all";
+            } else if (color === "amber") {
+                box.className = "min-h-[60px] p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 transition-all";
+            } else if (color === "indigo") {
+                box.className = "min-h-[60px] p-4 rounded-2xl bg-indigo-50 border border-indigo-200 text-indigo-800 transition-all";
+            } else {
+                box.className = "min-h-[60px] p-4 rounded-2xl bg-slate-50 border border-slate-200 text-slate-600 transition-all";
+            }
+        }
+
+        function renderAdultItem() {
+            const list = adultData[adultLanguage] || adultData['es-ES'];
+            const item = list[adultIndex];
+
+            document.getElementById('adultTargetText').innerText = item.text;
+            document.getElementById('adultTranslationText').innerText = `(${item.translation})`;
+            document.getElementById('adultProgressText').innerText = `Phrase ${adultIndex + 1} of ${list.length}`;
+            
+            document.getElementById('adultHeardText').innerText = '"..."';
+            document.getElementById('adultMatchScore').innerText = 'Match: 0%';
+            document.getElementById('adultMatchScore').className = 'text-xs font-bold px-2 py-1 rounded bg-slate-200 text-slate-700';
+            document.getElementById('adultFeedbackMessage').innerText = 'Press the microphone button and read the phrase aloud.';
+        }
+
+        function changeAdultLanguage() {
+            adultLanguage = document.getElementById('adultLanguageSelect').value;
+            adultIndex = 0;
+            renderAdultItem();
+        }
+
+        function speakAdultPhrase() {
+            const item = adultData[adultLanguage][adultIndex];
+            speakText(item.text, adultLanguage);
+        }
+
+        function toggleAdultSpeech() {
+            if (!recognition) {
+                alert("Speech recognition is not supported on this browser.");
+                return;
+            }
+            if (isListening) {
+                recognition.stop();
+            } else {
+                recognition.lang = adultLanguage;
+                recognition.start();
+            }
+        }
+
+        function handleAdultResult(spokenText) {
+            const target = adultData[adultLanguage][adultIndex].text;
+            const score = calculateSimilarity(spokenText.toLowerCase(), target.toLowerCase());
+
+            document.getElementById('adultHeardText').innerText = `"${spokenText}"`;
+            document.getElementById('adultMatchScore').innerText = `Match: ${score}%`;
+
+            const scoreBadge = document.getElementById('adultMatchScore');
+            const msg = document.getElementById('adultFeedbackMessage');
+
+            if (score > 75) {
+                scoreBadge.className = 'text-xs font-bold px-2 py-1 rounded bg-emerald-100 text-emerald-700';
+                msg.innerText = "Excellent pronunciation!";
+                triggerCelebration();
+            } else if (score > 40) {
+                scoreBadge.className = 'text-xs font-bold px-2 py-1 rounded bg-amber-100 text-amber-700';
+                msg.innerText = "Good try! Listen to the native audio and try again.";
+            } else {
+                scoreBadge.className = 'text-xs font-bold px-2 py-1 rounded bg-rose-100 text-rose-700';
+                msg.innerText = "Keep practicing! Try listening to the phrase once more.";
+            }
+        }
+
+        function nextAdultItem() {
+            const list = adultData[adultLanguage];
+            if (adultIndex < list.length - 1) {
+                adultIndex++;
+            } else {
+                adultIndex = 0;
+            }
+            renderAdultItem();
+        }
+
+        // Helper: Simple Levenshtein distance for adult mode match score
+        function calculateSimilarity(s1, s2) {
+            let longer = s1;
+            let shorter = s2;
+            if (s1.length < s2.length) {
+                longer = s2;
+                shorter = s1;
+            }
+            let longerLength = longer.length;
+            if (longerLength === 0) return 100;
+            
+            let editDistance = 0;
+            for (let i = 0; i < shorter.length; i++) {
+                if (shorter[i] !== longer[i]) editDistance++;
+            }
+            editDistance += (longer.length - shorter.length);
+            
+            return Math.round(((longerLength - editDistance) / parseFloat(longerLength)) * 100);
+        }
+
+        function speakText(text, lang) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop active speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                utterance.rate = currentMode === 'kids' ? 0.85 : 1.0; // Slower pace for kids
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        function updateMicUI(listening) {
+            const kidsMicBtn = document.getElementById('kidsMicBtn');
+            const kidsMicIcon = document.getElementById('kidsMicIcon');
+            const kidsMicStatus = document.getElementById('kidsMicStatus');
+
+            const adultMicBtn = document.getElementById('adultMicBtn');
+            const adultMicIcon = document.getElementById('adultMicIcon');
+            const adultMicStatus = document.getElementById('adultMicStatus');
+
+            if (listening) {
+                kidsMicBtn.classList.add('mic-active', 'bg-red-600');
+                kidsMicIcon.className = 'fa-solid fa-waveform text-3xl sm:text-4xl';
+                kidsMicStatus.innerText = 'Listening...';
+
+                adultMicBtn.classList.add('bg-red-600');
+                adultMicIcon.className = 'fa-solid fa-spinner fa-spin';
+                adultMicStatus.innerText = 'Listening...';
+            } else {
+                kidsMicBtn.classList.remove('mic-active', 'bg-red-600');
+                kidsMicIcon.className = 'fa-solid fa-microphone text-3xl sm:text-4xl';
+                kidsMicStatus.innerText = 'Tap & Say';
+
+                adultMicBtn.classList.remove('bg-red-600');
+                adultMicIcon.className = 'fa-solid fa-microphone';
+                adultMicStatus.innerText = 'Start Speaking';
+            }
+        }
+
+        function triggerCelebration() {
+            if (typeof confetti === 'function') {
+                confetti({
+                    particleCount: 50,
+                    spread: 60,
+                    origin: { y: 0.7 }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
